@@ -266,7 +266,7 @@ var invokeStart = CC_SUPPORT_JIT ?
 var invokeUpdate = CC_SUPPORT_JIT ?
     createInvokeImpl('c.update(dt)', true) :
     createInvokeImpl(function (c, dt) {
-            c.update(dt);
+        !c.renderEnable && c.update(dt);
         },
         true,
         undefined,
@@ -280,7 +280,7 @@ var invokeUpdate = CC_SUPPORT_JIT ?
 var invokeLateUpdate = CC_SUPPORT_JIT ?
     createInvokeImpl('c.lateUpdate(dt)', true) :
     createInvokeImpl(function (c, dt) {
-            c.lateUpdate(dt);
+        !c.renderEnable && c.lateUpdate(dt);
         },
         true,
         undefined,

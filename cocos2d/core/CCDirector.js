@@ -906,7 +906,9 @@ cc.Director.prototype = {
 
             // After draw
             this.emit(cc.Director.EVENT_AFTER_DRAW, deltaTime);
-
+            if (cc.dynamicAtlasManager.needReset) {
+                cc.dynamicAtlasManager.reset();
+            }
             eventManager.frameUpdateListeners();
             this._totalFrames++;
         }

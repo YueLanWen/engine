@@ -893,6 +893,9 @@ let NodeDefines = {
             default: 0,
             formerlySerializedAs: 'groupIndex'
         },
+        _renderEnable: false,
+        // bfs 渲染标识
+        _bfsRenderFlag: false,
         groupIndex: {
             get () {
                 return this._groupIndex;
@@ -1632,6 +1635,50 @@ let NodeDefines = {
                 return _forward.clone();
             }
         },
+        renderEnable: {
+            get() {
+                return !this._renderEnable;
+            },
+            set(v) {
+                if (v == !this._renderEnable) return;
+                this._renderEnable = !v;
+                // let setChildrenRnable = (children, flag) => {
+                //     for (let i = 0, l = children.length; i < l; i++) {
+                //         let c = children[i];
+                //         if (c._activeInHierarchy) {
+                //             c.renderEnable = flag;
+                //         }
+                //     }
+                // }
+                if (!v) {
+                    this._renderFlag |= RenderFlow.FLAG_DONOTHING
+                } else {
+                    this._renderFlag &= ~RenderFlow.FLAG_DONOTHING
+                }
+                // if (this._children.length > 0) {
+                //     setChildrenRnable(this._children, v);
+                // }
+            }
+        },
+        /**
+         *  bfs 渲染顺序优化
+         * 
+         * */
+        bfsRenderFlag: {
+            get() {
+                return this._bfsRenderFlag
+            },
+            set(v) {
+                if (v) {
+                    this._renderFlag |= RenderFlow.FLAG_CHILDREN_BFS_RENDER
+                    this._bfsRenderFlag = v;
+                } else {
+                    this._bfsRenderFlag = v;
+                    this._renderFlag &= ~RenderFlow.FLAG_CHILDREN_BFS_RENDER
+                }
+
+            }
+        }
     },
 
     /**
