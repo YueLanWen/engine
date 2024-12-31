@@ -42,6 +42,9 @@ export default class CanvasSimpleSprite extends Assembler {
     }
 
     updateUVs (sprite) {
+        // ==== modify by yanmingjie ====
+        if (!sprite._spriteFrame) return;
+        // ==============================
         let frame = sprite.spriteFrame;
         let renderData = this._renderData;
         let verts = renderData.vertices;
@@ -70,6 +73,9 @@ export default class CanvasSimpleSprite extends Assembler {
     }
 
     updateVerts (sprite) {
+        // ==== modify by yanmingjie ====
+        if (!sprite._spriteFrame) return;
+        // ==============================
         let renderData = this._renderData,
             node = sprite.node,
             verts = renderData.vertices,

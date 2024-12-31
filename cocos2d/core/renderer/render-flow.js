@@ -11,6 +11,7 @@ const COLOR = 1 << FlagOfset++;
 const OPACITY_COLOR = OPACITY | COLOR;
 const RENDER = 1 << FlagOfset++;
 const CHILDREN = 1 << FlagOfset++;
+const CHILDREN_BFS_RENDER = 1 << FlagOfset++;
 const POST_RENDER = 1 << FlagOfset++;
 const FINAL = 1 << FlagOfset++;
 
@@ -77,11 +78,76 @@ _proto._color = function (node) {
 
 _proto._render = function (node) {
     let comp = node._renderComponent;
+    if (node._bfsRenderFlag) {
+        comp._bfsCancelRenderFlag = true;
+        //?????????spine ?????????_childrenBfsRender ?????
+        if (!comp.__className__ == "sp.skeleton") return this._next._func(node);
+    } else {
     comp._checkBacth(_batcher, node._cullingMask);
+    }
+    //在小游戏中，当出现texuture 改变 Image() 时，取消节点渲染数据上传。 
+    if (comp?.spriteFrame?._texture?._textureImgChangeFlag) {
+        this._next._func(node);
+    } else {
     comp._assembler.fillBuffers(comp, _batcher);
     this._next._func(node);
+    }
+
+
 };
 
+_proto._childrenBfsRender = function (node) {
+    if (!node._bfsList) {
+        node._bfsList = { map: {}, indexList: [], maskNodeList: [] };
+    } else {
+        if (node._bfsList.indexList.length > 0) {
+            for (let n = 0, m = node._bfsList.indexList.length; n < m; n++) {
+                let list = node._bfsList.map[node._bfsList.indexList[n]];
+                //?????? ??????active ?????
+                for (let i = 0, l = list.length; i < l; i++) {
+                    let c = list[i];
+                    if (!c.isValid) {
+                        list.splice(i, 1);
+                        l = list.length;
+                        i -= 1;
+                        continue;
+                    }
+                    if (c.parent && c.parent._recordOpacityOrActive) {
+                        c._recordOpacityOrActive = true;
+                    }
+
+                }
+                // ???
+                for (let i = 0, l = list.length; i < l; i++) {
+                    let c = list[i];
+                    if (c.parent && c._activeInHierarchy && c.opacity !== 0 && !c._recordOpacityOrActive) {
+                        let comp = c._renderComponent;
+                        if (comp) {
+                            comp._bfsCancelRenderFlag = false;
+                            comp._checkBacth(_batcher, c._cullingMask);
+                            comp._assembler.fillBuffers(comp, _batcher);
+                        }
+                    }
+                }
+            }
+            //mask ??????
+            if (node._bfsList.maskNodeList.length > 0) {
+                // ???
+                let list = node._bfsList.maskNodeList;
+                for (let i = 0, l = list.length; i < l; i++) {
+                    let c = list[i];
+                    if (c.parent && c.parent._recordOpacityOrActive) continue;
+                    if (c.parent && c._activeInHierarchy && c.opacity !== 0 && !c._recordOpacityOrActive) {
+                        c._renderFlag |= (RENDER | CHILDREN_BFS_RENDER | POST_RENDER);
+                        flows[c._renderFlag]._func(c);
+                        c._renderFlag &= ~CHILDREN_BFS_RENDER;
+                    }
+                }
+            }
+        }
+    }
+    this._next._func(node);
+}
 _proto._children = function (node) {
     let cullingMask = _cullingMask;
     let batcher = _batcher;
@@ -93,6 +159,11 @@ _proto._children = function (node) {
     let worldOpacityFlag = batcher.parentOpacityDirty ? OPACITY_COLOR : 0;
     let worldDirtyFlag = worldTransformFlag | worldOpacityFlag;
 
+    let bfsParentFlag = node._renderFlag & CHILDREN_BFS_RENDER
+    // start bfs add bfsList data
+    if (bfsParentFlag) {
+        if (!node._bfsList) node._bfsList = { map: {}, indexList: [], maskNodeList: [] };
+    }
     let children = node._children;
     for (let i = 0, l = children.length; i < l; i++) {
         let c = children[i];
@@ -101,6 +172,45 @@ _proto._children = function (node) {
         c._renderFlag |= worldDirtyFlag;
         if (!c._activeInHierarchy || c._opacity === 0) continue;
 
+        if (!c._activeInHierarchy || c._opacity === 0 || c._renderFlag & DONOTHING) {
+            c._recordOpacityOrActive = true;
+            if (!node._bfsRenderFlag) {
+                continue;
+            }
+            let key = c.parent.name + "_" + c.name
+            if (node._bfsList && node._bfsList.map[key]) {
+                continue;
+            }
+        } else {
+            if (!node._activeInHierarchy || node._opacity === 0) {
+                c._recordOpacityOrActive = true;
+            } else {
+                c._recordOpacityOrActive = false;
+            }
+        }
+        if (node._bfsRenderFlag) {
+            // do the mask template test
+            let comp = c._renderComponent;
+            if (comp && comp.__classname__ && comp.__classname__ == "cc.Mask") {
+                c._renderFlag &= ~(RENDER | POST_RENDER);
+                if (!c._bfsRenderFlag) {
+                    if (!c._bfsList) c._bfsList = { map: {}, indexList: [], maskNodeList: [] };
+                    c._bfsRenderFlag = true;
+                    node._bfsList.maskNodeList.push(c);
+                }
+            } else {
+                if (!c._bfsRenderFlag || !c._bfsList) {
+                    c._bfsRenderFlag = true;
+                    c._bfsList = node._bfsList;
+                    let key = c.parent.name + "_" + c.name
+                    if (!c._bfsList.map[key]) {
+                        c._bfsList.map[key] = [];
+                        c._bfsList.indexList.push(key);
+                    }
+                    c._bfsList.map[key].push(c);
+                }
+            }
+        }
         _cullingMask = c._cullingMask = c.groupIndex === 0 ? cullingMask : 1 << c.groupIndex;
 
         // TODO: Maybe has better way to implement cascade opacity
@@ -161,6 +271,8 @@ function createFlow (flag, next) {
         case POST_RENDER: 
             flow._func = flow._postRender;
             break;
+        case CHILDREN_BFS_RENDER:
+            flow._func = flow._childrenBfsRender
     }
 
     return flow;
@@ -281,6 +393,7 @@ RenderFlow.FLAG_COLOR = COLOR;
 RenderFlow.FLAG_OPACITY_COLOR = OPACITY_COLOR;
 RenderFlow.FLAG_RENDER = RENDER;
 RenderFlow.FLAG_CHILDREN = CHILDREN;
+RenderFlow.FLAG_CHILDREN_BFS_RENDER = CHILDREN_BFS_RENDER;
 RenderFlow.FLAG_POST_RENDER = POST_RENDER;
 RenderFlow.FLAG_FINAL = FINAL;
 

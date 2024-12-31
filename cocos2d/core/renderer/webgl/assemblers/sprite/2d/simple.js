@@ -37,6 +37,10 @@ export default class SimpleSpriteAssembler extends Assembler2D {
     }
 
     updateUVs (sprite) {
+        // ==== modify by yanmingjie ====
+        if (!sprite._spriteFrame) return;
+        // ==============================
+
         let uv = sprite._spriteFrame.uv;
         let uvOffset = this.uvOffset;
         let floatsPerVert = this.floatsPerVert;
@@ -50,6 +54,10 @@ export default class SimpleSpriteAssembler extends Assembler2D {
     }
 
     updateVerts (sprite) {
+        // ==== modify by yanmingjie ====
+        if (!sprite._spriteFrame) return;
+        // ==============================
+
         let node = sprite.node,
             cw = node.width, ch = node.height,
             appx = node.anchorX * cw, appy = node.anchorY * ch,

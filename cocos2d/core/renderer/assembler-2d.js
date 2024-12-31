@@ -101,7 +101,8 @@ export default class Assembler2D extends Assembler {
         if (renderer.worldMatDirty) {
             this.updateWorldVerts(comp);
         }
-
+        //如果走bfs render ，只需要更新WorldVerts矩阵
+        if (comp._bfsCancelRenderFlag) return;
         let renderData = this._renderData;
         let vData = renderData.vDatas[0];
         let iData = renderData.iDatas[0];
@@ -135,7 +136,7 @@ export default class Assembler2D extends Assembler {
 
     packToDynamicAtlas (comp, frame) {
         if (CC_TEST) return;
-        
+        if (!frame) return console.log("packToDynamicAtlas  no frame  ");
         if (!frame._original && dynamicAtlasManager && frame._texture.packable && frame._texture.loaded) {
             let packedFrame = dynamicAtlasManager.insertSpriteFrame(frame);
             if (packedFrame) {
@@ -149,6 +150,9 @@ export default class Assembler2D extends Assembler {
             // texture was packed to dynamic atlas, should update uvs
             comp._vertsDirty = true;
             comp._updateMaterial();
+        }
+        if (frame._original && dynamicAtlasManager) {
+            dynamicAtlasManager.addCompToCacheMap(comp);
         }
     }
 }

@@ -82,7 +82,7 @@ export default class BmfontAssembler extends Assembler2D {
         if (_comp === comp) return;
 
         _comp = comp;
-        
+        this.onRecycle();
         this._reserveQuads(comp, comp.string.toString().length);
         this._updateFontFamily(comp);
         this._updateProperties(comp);
@@ -240,7 +240,12 @@ export default class BmfontAssembler extends Assembler2D {
                     console.log("Can't find letter definition in texture atlas " + atlasName + " for letter:" + character);
                     continue;
                 }
-
+                //console.log("shareLabelInfo::", character, letterDef.refCount, letterDef.hash, shareLabelInfo.hash);
+                if (letterDef.hash) {
+                    if (!this._refLetters) this._refLetters = [];
+                    this._refLetters.push(letterDef.hash);
+                    letterDef.refCount++;
+                }
                 let letterX = nextLetterX + letterDef.offsetX * _bmfontScale - shareLabelInfo.margin;
 
                 if (_isWrapText
@@ -502,6 +507,9 @@ export default class BmfontAssembler extends Assembler2D {
             let letterInfo = _lettersInfo[ctr];
             if (letterInfo.valid) {
                 let letterDef = shareLabelInfo.fontAtlas.getLetter(letterInfo.hash);
+                if (!letterDef) {
+                    continue;
+                }
 
                 let px = letterInfo.x + letterDef.w * _bmfontScale;
                 let lineIndex = letterInfo.line;
@@ -555,7 +563,9 @@ export default class BmfontAssembler extends Assembler2D {
             let letterInfo = _lettersInfo[ctr];
             if (!letterInfo.valid) continue;
             let letterDef = shareLabelInfo.fontAtlas.getLetter(letterInfo.hash);
-
+            if (!letterDef) {
+                continue;
+            }
             _tmpRect.height = letterDef.h;
             _tmpRect.width = letterDef.w;
             _tmpRect.x = letterDef.u;
@@ -690,4 +700,14 @@ export default class BmfontAssembler extends Assembler2D {
     _quadsUpdated (comp) {}
 
     _reserveQuads () {}
+    onRecycle() {
+        if (!this._refLetters) return;
+        for (let i = 0, l = this._refLetters.length; i < l; i++) {
+            if (cc.Label._shareAtlas) {
+                cc.Label._shareAtlas.decRefByFontDefDictionaryHash(this._refLetters[i]);
+            }
+
+        }
+        this._refLetters.length = 0;
+    }
 }

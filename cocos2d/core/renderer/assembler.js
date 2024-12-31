@@ -18,6 +18,8 @@ export default class Assembler {
     getVfmt () {
         return vfmtPosUvColor;
     }
+    onRecycle() { }
+
 }
 
 

@@ -1,16 +1,16 @@
 const Atlas = require('./atlas');
-
+import Cache from '../../../asset-manager/cache';
 let _atlases = [];
 let _atlasIndex = -1;
 
-let _maxAtlasCount = 5;
+let _maxAtlasCount = 2;
 let _textureSize = 2048;
 let _maxFrameSize = 512;
 let _textureBleeding = true;
 
 let _debugNode = null;
 
-function newAtlas () {
+function newAtlas() {
     let atlas = _atlases[++_atlasIndex]
     if (!atlas) {
         atlas = new Atlas(_textureSize, _textureSize);
@@ -19,7 +19,7 @@ function newAtlas () {
     return atlas;
 }
 
-function beforeSceneLoad () {
+function beforeSceneLoad() {
     dynamicAtlasManager.reset();
 }
 
@@ -32,17 +32,18 @@ let _enabled = false;
  */
 let dynamicAtlasManager = {
     Atlas: Atlas,
-
+    _compMap: new Cache(),
+    needReset: false,
     /**
      * !#en Enable or disable the dynamic atlas, see [Dynamic Atlas](https://docs.cocos.com/creator/2.4/manual/en/advanced-topics/dynamic-atlas.html) for details.
      * !#zh 开启或者关闭动态图集，详见 [动态合图](https://docs.cocos.com/creator/2.4/manual/zh/advanced-topics/dynamic-atlas.html)。
      * @property enabled
      * @type {Boolean}
      */
-    get enabled () {
+    get enabled() {
         return _enabled;
     },
-    set enabled (value) {
+    set enabled(value) {
         if (_enabled === value) return;
 
         if (value) {
@@ -62,10 +63,10 @@ let dynamicAtlasManager = {
      * @property maxAtlasCount
      * @type {Number}
      */
-    get maxAtlasCount () {
+    get maxAtlasCount() {
         return _maxAtlasCount;
     },
-    set maxAtlasCount (value) {
+    set maxAtlasCount(value) {
         _maxAtlasCount = value;
     },
 
@@ -75,7 +76,7 @@ let dynamicAtlasManager = {
      * @property atlasCount
      * @type {Number}
      */
-    get atlasCount () {
+    get atlasCount() {
         return _atlases.length;
     },
 
@@ -85,11 +86,11 @@ let dynamicAtlasManager = {
      * @property textureBleeding
      * @type {Boolean}
      */
-    get textureBleeding () {
+    get textureBleeding() {
         return _textureBleeding;
     },
 
-    set textureBleeding (enable) {
+    set textureBleeding(enable) {
         _textureBleeding = enable;
     },
 
@@ -99,10 +100,10 @@ let dynamicAtlasManager = {
      * @property textureSize
      * @type {Number}
      */
-    get textureSize () {
+    get textureSize() {
         return _textureSize;
     },
-    set textureSize (value) {
+    set textureSize(value) {
         _textureSize = value;
     },
 
@@ -112,10 +113,10 @@ let dynamicAtlasManager = {
      * @property maxFrameSize
      * @type {Number}
      */
-    get maxFrameSize () {
+    get maxFrameSize() {
         return _maxFrameSize;
     },
-    set maxFrameSize (value) {
+    set maxFrameSize(value) {
         _maxFrameSize = value;
     },
 
@@ -134,12 +135,47 @@ let dynamicAtlasManager = {
      * @param {SpriteFrame} spriteFrame
      * @return {Object} frame
      */
-    insertSpriteFrame (spriteFrame) {
+    insertSpriteFrame(spriteFrame) {
         if (CC_EDITOR) return null;
-        if (!_enabled || _atlasIndex === _maxAtlasCount ||
+        if (!_enabled ||
             !spriteFrame || spriteFrame._original) return null;
 
         if (!spriteFrame._texture.packable) return null;
+        //当图集已达最大时，清理
+        if (_atlasIndex === _maxAtlasCount) {
+            if (!this.needReset) this.needReset = true;
+            return null;
+        }
+        //小游戏平台判断原始图片位置是否在小游戏的缓存文件夹中。加入cacheManager修正地址路径。
+        if (cc.sys.platform === cc.sys.WECHAT_GAME || cc.sys.platform === cc.sys.ALIPAY_GAME) {
+            let texture = spriteFrame._texture;
+            if (texture._image && texture._image instanceof HTMLImageElement) {
+                let temp = cc.assetManager.cacheManager.getFileCacheToTempPath(texture._image.src);
+                if (temp) {
+                    texture._textureImgChangeFlag = true;
+                    var img = new Image();
+                    function loadCallback() {
+                        img.removeEventListener('load', loadCallback);
+                        img.removeEventListener('error', errorCallback);
+                        if (texture.isValid) {
+                            texture._cleanupImageCache();
+                            texture.initWithElement(img);
+                            texture._textureImgChangeFlag = false
+                        }
+                    }
+                    function errorCallback() {
+                        img.removeEventListener('load', loadCallback);
+                        img.removeEventListener('error', errorCallback);
+                        texture.destroy();
+                    }
+                    img.addEventListener('load', loadCallback);
+                    img.addEventListener('error', errorCallback);
+                    img.src = temp;
+                    console.log("insertSpriteFrame temp Cache: ", temp);
+                    return null;
+                }
+            }
+        }
 
         let atlas = _atlases[_atlasIndex];
         if (!atlas) {
@@ -159,22 +195,47 @@ let dynamicAtlasManager = {
      * !#zh 重置所有动态图集，已有的动态图集会被销毁。
      * @method reset
     */
-    reset () {
+    reset() {
+        console.log("dynamic atlas reset");
         for (let i = 0, l = _atlases.length; i < l; i++) {
             _atlases[i].destroy();
         }
         _atlases.length = 0;
         _atlasIndex = -1;
+        this.destroyAllCompMap();
+        //提前创建一个
     },
+    addCompToCacheMap(comp) {
+        if (!this._compMap.has(comp.uuid)) this._compMap.add(comp.uuid, comp);
+    },
+    destroyAllCompMap() {
+        this._compMap.forEach((comp, compId) => {
+            if (comp.isValid) {
+                if (comp._applySpriteFrame) {
+                    comp._applySpriteFrame();
+                } else if (comp._forceUpdateRenderData) {
+                    comp._forceUpdateRenderData();
+                }
 
-    deleteAtlasSpriteFrame (spriteFrame) {
+            }
+        })
+        this._compMap.clear();
+        this.needReset = false;
+    },
+    destroyCompMap(compId) {
+        let comp = this._compMap.get(compId);
+        if (comp) {
+            this._compMap.remove(compId);
+        }
+    },
+    deleteAtlasSpriteFrame(spriteFrame) {
         if (!spriteFrame._original) return;
 
         let texture = spriteFrame._original._texture;
         this.deleteAtlasTexture(texture);
     },
 
-    deleteAtlasTexture (texture) {
+    deleteAtlasTexture(texture) {
         if (texture) {
             for (let i = _atlases.length - 1; i >= 0; i--) {
                 _atlases[i].deleteInnerTexture(texture);
@@ -195,7 +256,7 @@ let dynamicAtlasManager = {
      * @param {Boolean} show
      * @return {Node}
      */
-    showDebug (show) {
+    showDebug(show) {
         if (show) {
             if (!_debugNode || !_debugNode.isValid) {
                 let width = cc.visibleRect.width;
@@ -204,8 +265,8 @@ let dynamicAtlasManager = {
                 _debugNode = new cc.Node('DYNAMIC_ATLAS_DEBUG_NODE');
                 _debugNode.width = width;
                 _debugNode.height = height;
-                _debugNode.x = width/2;
-                _debugNode.y = height/2;
+                _debugNode.x = width / 2;
+                _debugNode.y = height / 2;
                 _debugNode.zIndex = cc.macro.MAX_ZINDEX;
                 _debugNode.parent = cc.director.getScene();
 
@@ -248,7 +309,7 @@ let dynamicAtlasManager = {
         }
     },
 
-    update () {
+    update() {
         if (!this.enabled) return;
 
         for (let i = 0; i <= _atlasIndex; i++) {
