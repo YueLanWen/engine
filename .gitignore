@@ -14,3 +14,7 @@ npm-debug.log
 DebugInfos.json
 cocos2d/core/platform/deserialize-compiled.js
 cocos2d/core/value-types/*.js
+#忽视空白行和注释行，只关注实际的文件和目录名。这个文件的内容表示了在提交代码时，Git 忽略的文件和目录。
+ 
+[core]
+whitespace = space - before - tab,cr - at - eol
