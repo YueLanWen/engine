@@ -632,6 +632,7 @@ let Label = cc.Class({
     },
 
     onDestroy () {
+        this._assembler && this._assembler.onRecycle && this._assembler.onRecycle();
         this._assembler && this._assembler._resetAssemblerData && this._assembler._resetAssemblerData(this._assemblerData);
         this._assemblerData = null;
         this._letterTexture = null;

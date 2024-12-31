@@ -69,6 +69,23 @@ let pool = new js.Pool(function (node) {
     if (!cc.isValid(node)) {
         return false;
     } else {
+        if (node._private_parent) {
+            let id = node._private_parent.name + "_" + node.name;
+            if (node._bfsList) {
+                let arr = node._bfsList.map[id];
+                if (arr) {
+                    let index = arr.findIndex((_node) => {
+                        return _node.uuid == node.uuid;
+                    });
+                    if (index >= 0) {
+                        arr.splice(index, 1);
+                    }
+                }
+            }
+        }
+
+        node.bfsRenderFlag = false;
+        node._private_parent = null;
         let outline = node.getComponent(cc.LabelOutline);
         if (outline) {
             outline.width = 0;
@@ -394,7 +411,9 @@ let RichText = cc.Class({
     },
 
     _createFontLabel (string) {
-        return pool.get(string, this);
+        let node = pool.get(string, this);
+        node._private_parent = this.node;
+        return node;
     },
 
     _onTTFLoaded () {
@@ -459,7 +478,8 @@ let RichText = cc.Class({
     },
 
     _containsTouchLocation (label, point) {
-        return label._hitTest(point);
+        let myRect = label.getBoundingBoxToWorld();
+        return myRect.contains(point);
     },
 
     _resetState () {
