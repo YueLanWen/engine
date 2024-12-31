@@ -69,7 +69,7 @@ var parser = {
      * @typescript
      * parseImage(file: Blob, options: Record<string, any>, onComplete?: (err: Error, img: ImageBitmap|HTMLImageElement) => void): void
      */
-    parseImage (file, options, onComplete) {
+    parseImage(file, options, onComplete) {
         if (capabilities.imageBitmap && file instanceof Blob) {
             let imageOptions = {};
             imageOptions.imageOrientation = options.__flipY__ ? 'flipY' : 'none';
@@ -109,11 +109,11 @@ var parser = {
      * @typescript
      * parseAudio(file: ArrayBuffer|HTMLAudioElement, options: Record<string, any>, onComplete?: (err: Error, audio: AudioBuffer|HTMLAudioElement) => void): void
      */
-    parseAudio (file, options, onComplete) {
-        if (file instanceof ArrayBuffer) { 
+    parseAudio(file, options, onComplete) {
+        if (file instanceof ArrayBuffer) {
             __audioSupport.context.decodeAudioData(file, function (buffer) {
                 onComplete && onComplete(null, buffer);
-            }, function(e){
+            }, function (e) {
                 onComplete && onComplete(e, null);
             });
         }
@@ -144,14 +144,14 @@ var parser = {
      * @typescript
      * parsePVRTex(file: ArrayBuffer|ArrayBufferView, options: Record<string, any>, onComplete: (err: Error, pvrAsset: {_data: Uint8Array, _compressed: boolean, width: number, height: number}) => void): void
      */
-    parsePVRTex : (function () {
+    parsePVRTex: (function () {
         //===============//
         // PVR constants //
         //===============//
         // https://github.com/toji/texture-tester/blob/master/js/webgl-texture-util.js#L424
         const PVR_HEADER_LENGTH = 13; // The header length in 32 bit ints.
         const PVR_MAGIC = 0x03525650; //0x50565203;
-    
+
         // Offsets into the header array.
         const PVR_HEADER_MAGIC = 0;
         const PVR_HEADER_FORMAT = 2;
@@ -159,32 +159,32 @@ var parser = {
         const PVR_HEADER_WIDTH = 7;
         const PVR_HEADER_MIPMAPCOUNT = 11;
         const PVR_HEADER_METADATA = 12;
-    
+
         return function (file, options, onComplete) {
             let err = null, out = null;
             try {
                 let buffer = file instanceof ArrayBuffer ? file : file.buffer;
                 // Get a view of the arrayBuffer that represents the DDS header.
                 let header = new Int32Array(buffer, 0, PVR_HEADER_LENGTH);
-    
+
                 // Do some sanity checks to make sure this is a valid DDS file.
-                if(header[PVR_HEADER_MAGIC] != PVR_MAGIC) {
+                if (header[PVR_HEADER_MAGIC] != PVR_MAGIC) {
                     throw new Error("Invalid magic number in PVR header");
                 }
-    
+
                 // Gather other basic metrics and a view of the raw the DXT data.
                 let width = header[PVR_HEADER_WIDTH];
                 let height = header[PVR_HEADER_HEIGHT];
                 let dataOffset = header[PVR_HEADER_METADATA] + 52;
                 let pvrtcData = new Uint8Array(buffer, dataOffset);
-    
+
                 out = {
                     _data: pvrtcData,
                     _compressed: true,
                     width: width,
                     height: height,
                 };
-                
+
             }
             catch (e) {
                 err = e;
@@ -227,12 +227,12 @@ var parser = {
         const ETC_PKM_WIDTH_OFFSET = 12;
         const ETC_PKM_HEIGHT_OFFSET = 14;
 
-        const ETC1_RGB_NO_MIPMAPS   = 0;
-        const ETC2_RGB_NO_MIPMAPS   = 1;
-        const ETC2_RGBA_NO_MIPMAPS  = 3;
+        const ETC1_RGB_NO_MIPMAPS = 0;
+        const ETC2_RGB_NO_MIPMAPS = 1;
+        const ETC2_RGBA_NO_MIPMAPS = 3;
 
         function readBEUint16(header, offset) {
-            return (header[offset] << 8) | header[offset+1];
+            return (header[offset] << 8) | header[offset + 1];
         }
         return function (file, options, onComplete) {
             let err = null, out = null;
@@ -254,7 +254,7 @@ var parser = {
                     width: width,
                     height: height
                 };
-                
+
             }
             catch (e) {
                 err = e;
@@ -288,7 +288,7 @@ var parser = {
         const ASTC_HEADER_SIZE_Y_BEGIN = 10;
         const ASTC_HEADER_SIZE_Z_BEGIN = 13;
 
-        function getASTCFormat (xdim, ydim) {
+        function getASTCFormat(xdim, ydim) {
             if (xdim === 4) {
                 return cc.Texture2D.PixelFormat.RGBA_ASTC_4x4;
             } if (xdim === 5) {
@@ -392,7 +392,7 @@ var parser = {
      * @typescript
      * parsePlist(file: string, options: Record<string, any>, onComplete?: (err: Error, data: any) => void): void
      */
-    parsePlist (file, options, onComplete) {
+    parsePlist(file, options, onComplete) {
         var err = null;
         var result = plistParser.parse(file);
         if (!result) err = new Error('parse failed');
@@ -421,7 +421,7 @@ var parser = {
      * @typescript
      * parseImport (file: any, options: Record<string, any>, onComplete?: (err: Error, asset: cc.Asset) => void): void
      */
-    parseImport (file, options, onComplete) {
+    parseImport(file, options, onComplete) {
         if (!file) return onComplete && onComplete(new Error('Json is empty'));
         var result, err = null;
         try {
@@ -433,7 +433,7 @@ var parser = {
         onComplete && onComplete(err, result);
     },
 
-    init () {
+    init() {
         _parsing.clear();
     },
 
@@ -459,7 +459,7 @@ var parser = {
      * register(type: string, handler: (file: any, options: Record<string, any>, onComplete: (err: Error, data: any) => void) => void): void
      * register(map: Record<string, (file: any, options: Record<string, any>, onComplete: (err: Error, data: any) => void) => void>): void
      */
-    register (type, handler) {
+    register(type, handler) {
         if (typeof type === 'object') {
             js.mixin(parsers, type);
         }
@@ -492,21 +492,21 @@ var parser = {
      * @typescript
      * parse(id: string, file: any, type: string, options: Record<string, any>, onComplete: (err: Error, content: any) => void): void
      */
-    parse (id, file, type, options, onComplete) {
+    parse(id, file, type, options, onComplete) {
         let parsedAsset, parsing, parseHandler;
         if (parsedAsset = parsed.get(id)) {
             onComplete(null, parsedAsset);
         }
-        else if (parsing = _parsing.get(id)){
+        else if (parsing = _parsing.get(id)) {
             parsing.push(onComplete);
         }
-        else if (parseHandler = parsers[type]){
+        else if (parseHandler = parsers[type]) {
             _parsing.add(id, [onComplete]);
             parseHandler(file, options, function (err, data) {
                 if (err) {
                     files.remove(id);
-                } 
-                else if (!isScene(data)){
+                }
+                else if (!isScene(data)) {
                     parsed.add(id, data);
                 }
                 let callbacks = _parsing.remove(id);
@@ -522,27 +522,27 @@ var parser = {
 };
 
 var parsers = {
-    '.png' : parser.parseImage,
-    '.jpg' : parser.parseImage,
-    '.bmp' : parser.parseImage,
-    '.jpeg' : parser.parseImage,
-    '.gif' : parser.parseImage,
-    '.ico' : parser.parseImage,
-    '.tiff' : parser.parseImage,
-    '.webp' : parser.parseImage,
-    '.image' : parser.parseImage,
-    '.pvr' : parser.parsePVRTex,
-    '.pkm' : parser.parsePKMTex,
-    '.astc' : parser.parseASTCTex,
+    '.png': parser.parseImage,
+    '.jpg': parser.parseImage,
+    '.bmp': parser.parseImage,
+    '.jpeg': parser.parseImage,
+    '.gif': parser.parseImage,
+    '.ico': parser.parseImage,
+    '.tiff': parser.parseImage,
+    '.webp': parser.parseImage,
+    '.image': parser.parseImage,
+    '.pvr': parser.parsePVRTex,
+    '.pkm': parser.parsePKMTex,
+    '.astc': parser.parseASTCTex,
     // Audio
-    '.mp3' : parser.parseAudio,
-    '.ogg' : parser.parseAudio,
-    '.wav' : parser.parseAudio,
-    '.m4a' : parser.parseAudio,
+    '.mp3': parser.parseAudio,
+    '.ogg': parser.parseAudio,
+    '.wav': parser.parseAudio,
+    '.m4a': parser.parseAudio,
 
     // plist
-    '.plist' : parser.parsePlist,
-    'import' : parser.parseImport
+    '.plist': parser.parsePlist,
+    'import': parser.parseImport
 };
 
 module.exports = parser;

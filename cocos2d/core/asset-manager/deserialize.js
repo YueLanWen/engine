@@ -94,7 +94,8 @@ function deserialize (json, options) {
     // non-native deps
     asset.__depends__ = depends;
     // native dep
-    asset._native && (asset.__nativeDepend__ = true);
+    //asset._native && (asset.__nativeDepend__ = true);
+    asset._native && (asset.__nativeDepend__ = true || !(asset instanceof sp.SkeletonData));
     pool.put(tdInfo);
     return asset;
 

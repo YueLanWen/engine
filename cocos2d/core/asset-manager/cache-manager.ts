@@ -104,7 +104,7 @@ export abstract class CacheManager {
      * @param {string} originUrl 
      * @returns {String} The cached path
      */
-    public abstract getCache (originUrl: string): string;
+    public abstract getCache(originUrl: string): string;
 
     /**
      * !#en
@@ -117,7 +117,13 @@ export abstract class CacheManager {
      * @param {string} originUrl 
      * @returns {String} The temp path
      */
-    public abstract getTemp (originUrl: string): string;
+    public abstract getTemp(originUrl: string): string;
+
+    /**
+     * 获取缓存文件移动到临时文件夹中的地址。
+     * @param cacheFile 缓存文件路径
+     */
+    public abstract getFileCacheToTempPath(cacheFilePath: string): string;
 
     /**
      * !#en
@@ -128,7 +134,7 @@ export abstract class CacheManager {
      * 
      * @method clearCache
      */
-    public abstract clearCache (): void;
+    public abstract clearCache(): void;
 
     /**
      * !#en
@@ -139,7 +145,7 @@ export abstract class CacheManager {
      * 
      * @method clearLRU
      */
-    public abstract clearLRU (): void;
+    public abstract clearLRU(): void;
 
     /**
      * !#en
@@ -151,5 +157,5 @@ export abstract class CacheManager {
      * @method removeCache
      * @param {string} originUrl
      */
-    public abstract removeCache (originUrl: string): void;
+    public abstract removeCache(originUrl: string): void;
 }
