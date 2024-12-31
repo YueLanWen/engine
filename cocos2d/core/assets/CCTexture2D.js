@@ -544,6 +544,10 @@ var Texture2D = cc.Class({
         if (CC_EDITOR) {
             this._exportedExts = null;
         }
+        /**
+         * 当小游戏img图片改变本地地址时，需要将此组件节点的数据填充取消，不进行渲染。
+         */
+        this._textureImgChangeFlag = false;
     },
 
     /**

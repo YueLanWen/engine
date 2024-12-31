@@ -34,6 +34,10 @@ let FontLetterDefinition = function() {
     this.textureID = 0;
     this.valid = false;
     this.xAdvance = 0;
+    this.originW = 0; //记录原始大小
+    this.originH = 0;
+    this.hash = ""; // 记录hash
+    this.refCount = 0; // 引用计数
 };
 
 let FontAtlas = function (texture) {
