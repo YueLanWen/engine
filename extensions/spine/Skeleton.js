@@ -63,7 +63,7 @@ let AnimationCacheMode = cc.Enum({
      * !#zh 私有缓存模式。
      * @property {Number} PRIVATE_CACHE
      */
-    PRIVATE_CACHE: 1
+    PRIVATE_CACHE: 2
 });
 
 function setEnumAttr(obj, propName, enumDef) {
